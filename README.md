@@ -1,5 +1,5 @@
 # server_banos
-servidor para impresion en baños
+servidor para impresion de baños Terminal Calama a traves de dispositivos windows
 
 openssl genrsa -out key.pem 2048
 openssl req -new -x509 -key key.pem -out cert.pem -days 36500
