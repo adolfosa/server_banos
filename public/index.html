@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Impresión de Ticket Térmico</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #contenedorQR {
+      visibility: hidden;
+      position: absolute;
+      left: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Enviar Ticket a Impresora</h1>
+
+  <label for="fecha">Fecha</label>
+  <input type="date" id="fecha" required />
+
+  <label for="hora">Hora</label>
+  <input type="time" id="hora" required />
+
+  <label for="tipo">Tipo de entrada</label>
+  <input type="text" id="tipo" placeholder="Ej: General" required />
+
+  <label for="precio">Precio</label>
+  <input type="text" id="precio" placeholder="Ej: $500" required />
+
+  <label for="codigo">Código</label>
+  <input type="text" id="codigo" placeholder="Ej: ABC123" required />
+
+  <div id="contenedorQR"></div>
+
+  <button onclick="enviarImpresion()">Imprimir Ticket</button>
+
+  <div class="status" id="estado"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    function generarQRBase64(texto, callback) {
+      const tempDiv = document.createElement("div");
+      const qr = new QRCode(tempDiv, {
+        text: texto,
+        width: 128,
+        height: 128,
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      // Esperar render del canvas
+      setTimeout(() => {
+        const img = tempDiv.querySelector("img");
+        if (img) {
+          callback(img.src); // base64 PNG
+        } else {
+          callback(null);
+        }
+      }, 500);
+    }
+
+    function enviarImpresion() {
+      const fecha = document.getElementById('fecha').value;
+      const hora = document.getElementById('hora').value;
+      const tipo = document.getElementById('tipo').value;
+      const precio = document.getElementById('precio').value;
+      const codigo = document.getElementById('codigo').value;
+
+      if (!codigo) {
+        document.getElementById('estado').innerText = "❌ Código requerido.";
+        return;
+      }
+
+      generarQRBase64(codigo, (qrBase64) => {
+        const payload = { fecha, hora, tipo, precio, codigo, qrBase64 };
+
+        fetch('/api/print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('estado').innerText = `✅ Ticket enviado correctamente`;
+          } else {
+            throw new Error(data.error || 'Error inesperado');
+          }
+        })
+        .catch(err => {
+          document.getElementById('estado').innerText = `❌ Error al imprimir: ${err.message}`;
+        });
+      });
+    }
+  </script>
+</body>
+</html>
