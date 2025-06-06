@@ -1,122 +1,164 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Impresión de Ticket Térmico</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    html,
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
+      padding: 0;
+      margin: 0;
+      height: 100vh;
+      background-color: antiquewhite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, Helvetica, sans-serif;
     }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
+
+    .contenedor-padre {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
+
+    .input-fields {
+      display: flex;
+      flex-direction: column;
+    }
+
     input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 20px;
+      width: 400px;
       padding: 10px;
-      width: 100%;
-      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      margin: 10px 0 20px 0;
     }
-    .status {
-      margin-top: 20px;
-      font-weight: bold;
+
+    .generarQR {
+      padding: 20px;
+      font-size: 1.5rem;
+      border-radius: 50px;
+      background: #28515e;
+      border: none;
+      color: white;
+      align-items: center;
+      margin: 20px;
     }
-    #contenedorQR {
-      visibility: hidden;
-      position: absolute;
-      left: -9999px;
+
+    .contenedor-QR {
+      padding: 20px;
+      background: white;
+      border: 2px solid black;
     }
   </style>
+  <title>index</title>
 </head>
+
 <body>
-  <h1>Enviar Ticket a Impresora</h1>
+  <div class="contenedor-padre">
+    <div class="input-fields">
+      <label for="fecha">Fecha</label>
+      <input type="date" id="fechaStr" value="2025-06-05" required />
 
-  <label for="fecha">Fecha</label>
-  <input type="date" id="fecha" required />
+      <label for="hora">Hora</label>
+      <input type="time" id="horaStr" value="15:00" required />
 
-  <label for="hora">Hora</label>
-  <input type="time" id="hora" required />
+      <label for="tipo">Tipo de entrada</label>
+      <input type="text" id="tipoStr" placeholder="Ej: General" value="General" required />
 
-  <label for="tipo">Tipo de entrada</label>
-  <input type="text" id="tipo" placeholder="Ej: General" required />
+      <label for="Codigo">Código</label>
+      <input type="text" id="numeroT" placeholder="Ej: ABC123" value="ABC123" required />
+    </div>
+    <button id="generarQR" class="generarQR">generar</button>
+    <div id="contenedor-QR" class="contenedor-QR"></div>
+    <div class="status" id="status"></div>
+  </div>
+</body>
 
-  <label for="precio">Precio</label>
-  <input type="text" id="precio" placeholder="Ej: $500" required />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Referencias
+  const botonQR = document.getElementById("generarQR");
+  const contenedorQR = document.getElementById("contenedor-QR");
+  const estado = document.getElementById("status");
 
-  <label for="codigo">Código</label>
-  <input type="text" id="codigo" placeholder="Ej: ABC123" required />
+  const fechaInput = document.getElementById("fechaStr");
+  const horaInput = document.getElementById("horaStr");
+  const tipoInput = document.getElementById("tipoStr");
+  const codigoInput = document.getElementById("numeroT");
 
-  <div id="contenedorQR"></div>
+  // Al hacer clic:
+  botonQR.addEventListener("click", () => {
+    // Obtener los valores
+    const fecha = fechaInput.value;
+    const hora = horaInput.value;
+    const tipo = tipoInput.value.trim();
+    const codigo = codigoInput.value.trim();
 
-  <button onclick="enviarImpresion()">Imprimir Ticket</button>
-
-  <div class="status" id="estado"></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script>
-    function generarQRBase64(texto, callback) {
-      const tempDiv = document.createElement("div");
-      const qr = new QRCode(tempDiv, {
-        text: texto,
-        width: 128,
-        height: 128,
-        correctLevel: QRCode.CorrectLevel.H
-      });
-
-      // Esperar render del canvas
-      setTimeout(() => {
-        const img = tempDiv.querySelector("img");
-        if (img) {
-          callback(img.src); // base64 PNG
-        } else {
-          callback(null);
-        }
-      }, 500);
+    if (!codigo) {
+      estado.textContent = "codigo requerido";
+      return;
     }
 
-    function enviarImpresion() {
-      const fecha = document.getElementById('fecha').value;
-      const hora = document.getElementById('hora').value;
-      const tipo = document.getElementById('tipo').value;
-      const precio = document.getElementById('precio').value;
-      const codigo = document.getElementById('codigo').value;
+    // Compactar el string para el QR
+    const datosQR = `F:${fecha}, H:${hora}, T:${tipo}, C:${codigo}`;
 
-      if (!codigo) {
-        document.getElementById('estado').innerText = "❌ Código requerido.";
+    // Limpiar y generar el QR
+    contenedorQR.innerHTML = "";
+    new QRCode(contenedorQR, {
+      text: datosQR,
+      width: 256,
+      height: 256,
+      correctLevel: QRCode.CorrectLevel.L
+    });
+
+    // Esperar a que el QR se genere
+    setTimeout(() => {
+      const qrCanvas = contenedorQR.querySelector("canvas");
+      if (!qrCanvas) {
+        estado.textContent = "No se pudo generar el QR";
         return;
       }
 
-      generarQRBase64(codigo, (qrBase64) => {
-        const payload = { fecha, hora, tipo, precio, codigo, qrBase64 };
+      const qrBase64 = qrCanvas.toDataURL("image/png").split(',')[1]; // sin encabezado
 
-        fetch('/api/print', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            document.getElementById('estado').innerText = `✅ Ticket enviado correctamente`;
+      const payload = {
+        Codigo: codigo,
+        hora: hora,
+        fecha: fecha,
+        tipo: tipo,
+        qrBase64: qrBase64
+      };
+
+      fetch('/api/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(async res => {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            if (data.success) {
+              estado.textContent = "✅ Ticket enviado correctamente";
+            } else {
+              throw new Error(data.error || 'Error inesperado');
+            }
           } else {
-            throw new Error(data.error || 'Error inesperado');
+            const text = await res.text();
+            throw new Error(`Respuesta no JSON: ${text}`);
           }
         })
         .catch(err => {
-          document.getElementById('estado').innerText = `❌ Error al imprimir: ${err.message}`;
+          estado.textContent = `❌ Error al imprimir: ${err.message}`;
         });
-      });
-    }
-  </script>
-</body>
+
+    }, 200); // esperar 200ms para asegurar el canvas
+  });
+</script>
+
 </html>

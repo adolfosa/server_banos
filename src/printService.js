@@ -1,49 +1,54 @@
 const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
+const path = require('path');
 
-function imprimirTicket({ fecha, hora, tipo, precio, codigo }) {
+function imprimirTicket({ Codigo, hora, fecha, tipo, qrBase64 }) {
   return new Promise((resolve, reject) => {
-    if (!codigo || !tipo) {
+    if (!Codigo || !tipo) {
       return reject(new Error('Campos requeridos faltantes'));
     }
 
-    // Contenido base
     const content = `
-        Ticket de Acceso
-        -------------------------
-        Fecha: ${fecha}
-        Hora: ${hora}
-        Tipo: ${tipo}
-        Precio: ${precio}
-        Código: ${codigo}
+    Ticket de Acceso
+    -------------------------
+    Fecha: ${fecha}
+    Hora: ${hora}
+    Tipo: ${tipo}
+    Código: ${Codigo}
+    `;
 
-        `;
+    const bufferTexto = Buffer.from(content, 'ascii');    
+    const bufferFinal = Buffer.concat([bufferTexto]);
 
-    // ESC d 5 => avanzar 5 líneas (0x1B 0x64 0x05)
-    const feed = Buffer.from([0x1B, 0x64, 0x05]);
-
-    // GS V 0 => corte total (0x1D 0x56 0x00)
-    const cut = Buffer.from([0x1D, 0x56, 0x00]);
-
-    const buffer = Buffer.concat([
-      Buffer.from(content, 'ascii'),
-      feed,
-      cut
-    ]);
-
-    const tmpPath = `${os.tmpdir()}\\ticket_print.bin`;
+    const tmpDir = os.tmpdir();
+    const textPath = path.join(tmpDir, 'ticket_text.bin');
+    const imagePath = path.join(tmpDir, 'qr_image.png');
 
     try {
-      fs.writeFileSync(tmpPath, buffer);
-      exec(`type "${tmpPath}" > LPT1`, (err) => {
-        if (err) {
-          return reject(new Error('Error al imprimir: ' + err.message));
-        }
-        resolve('Ticket impreso con corte total.');
-      });
+      fs.writeFileSync(textPath, bufferFinal);
+
+      if (qrBase64) {
+        const imageBuffer = Buffer.from(qrBase64, 'base64');
+        fs.writeFileSync(imagePath, imageBuffer);
+
+        // Comando para imprimir texto + imagen (necesita que LPT1 lo acepte o usar herramientas como RawBT, etc.)
+        exec(`type "${textPath}" > LPT1 && mspaint /pt "${imagePath}"`, (err) => {
+          if (err) {
+            return reject(new Error('Error al imprimir: ' + err.message));
+          }
+          resolve('Ticket impreso con QR.');
+        });
+      } else {
+        exec(`type "${textPath}" > LPT1`, (err) => {
+          if (err) {
+            return reject(new Error('Error al imprimir texto: ' + err.message));
+          }
+          resolve('Ticket impreso sin QR.');
+        });
+      }
     } catch (err) {
-      reject(new Error('Fallo al escribir archivo de impresión: ' + err.message));
+      reject(new Error('Fallo al preparar impresión: ' + err.message));
     }
   });
 }
